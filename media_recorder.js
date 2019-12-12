@@ -45,7 +45,7 @@ module.exports = function(RED) {
     };
         
     var ui = undefined;
-    function UiCameraRecorderNode(config) {
+    function UiMediaRecorderNode(config) {
         try {
             var node = this;
             if(ui === undefined) {
@@ -497,5 +497,5 @@ module.exports = function(RED) {
             }
         });
     }
-    RED.nodes.registerType('ui_camera_recorder', UiCameraRecorderNode);
+    RED.nodes.registerType('ui_media_recorder', UiMediaRecorderNode);
 };

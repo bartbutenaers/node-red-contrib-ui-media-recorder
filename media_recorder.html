@@ -10,7 +10,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-<script type="text/x-red" data-template-name="ui_camera_recorder">
+<script type="text/x-red" data-template-name="ui_media_recorder">
     <div class="form-row" id="template-row-group">
         <label for="node-input-group"><i class="fa fa-table"></i> Group</label>
         <input type="text" id="node-input-group">
@@ -37,7 +37,7 @@
     <div class="form-row">
         <input type="checkbox" id="node-input-startupVideoDisplay" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-input-startupVideoDisplay" style="width:70%;"> Display video in the dashboard at startup</label>
-    </div>                                                                                                                           -->
+    </div> 
     </br>
     <div class="form-row">
         <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
@@ -46,7 +46,7 @@
 </script>
 
 <script type="text/javascript">
-    RED.nodes.registerType("ui_camera_recorder", {
+    RED.nodes.registerType("ui_media_recorder", {
         category: 'dashboard',
         color: 'rgb( 63, 173, 181)',
         defaults: {
@@ -71,9 +71,9 @@
         },
         inputs:1,
         outputs:1,
-        icon: "videorecorder.png",
-        paletteLabel: "Camera recorder",
-        label: function() { return this.name || "Camera recorder"; },
+        icon: "font-awesome/fa-camera",
+        paletteLabel: "Media recorder",
+        label: function() { return this.name || "Media recorder"; },
         oneditprepare: function() {
             $('#node-input-allowVideoDisplay').change(function () { 
                 if (this.checked) {
@@ -106,7 +106,7 @@
                     $('#node-input-height').val(-1);
                 }
             });
-        
+
             $("#node-input-size").elementSizer({
                 width: "#node-input-width",
                 height: "#node-input-height",
@@ -116,25 +116,12 @@
     });
 </script>
 
-<script type="text/x-red" data-help-name="ui_camera_recorder">
-    <p>Node-RED UI widget node for recording camera images via the Node-RED dashboard.</p>
-    <h3>Inputs</h3>
-    <dl class="message-properties">
-        <dt>payload<span class="property-type">boolean</span></dt>
-        <dd>Boolean to control the audio capturing:
-            <ul>
-                <li><b>true</b> - start recording</li>
-                <li><b>false</b> - stop recording</li>
-            </ul>
-        </dd>
-    </dl>
-    
-    <h3>Outputs</h3>
-    <dl class="message-properties">
-        <dt>payload<span class="property-type">buffer</span></dt>
-        <dd>A buffer containing a JPEG image.
-        </dd>
-    </dl>
-    <h3>Details</h3>
-    <p>This UI widget can be used to record webcam images via a Node-RED dashboard.</p>
+<script type="text/x-red" data-help-name="ui_media_recorder">
+    <p>Node-RED UI widget node for recording media (i.e. audio and video) from the device where the Node-RED dashboard is being displayed in a browser.</p>
+    <p><strong>Media type:</strong><br/>
+    Currently only video (from the device's webcam) is supported.  In the future audio (from the device's microphone) will be added.</p>
+    <p><strong>Allow video playback in the dashboard:</strong><br/>
+    When activated the recorded video can be displayed in the dashboard (but it can also become hidden when required).  When deactivated the recorded video cannot be displayed in the dashboard, which means this widget will be completely invisible.</p>
+    <p><strong>Display video in the dashboard at startup:</strong><br/>
+    When activated the recorded video will be displayed by default when the dashboard is started.  When deactivated the recorded video will not be displayed by default in the dashboard.  Note that this checkbox is disabled when no video playback is allowed (see previous option).</p>
 </script>

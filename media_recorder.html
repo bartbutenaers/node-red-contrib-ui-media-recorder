@@ -37,12 +37,7 @@
     <div class="form-row">
         <input type="checkbox" id="node-input-startupVideoDisplay" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-input-startupVideoDisplay" style="width:70%;"> Display video in the dashboard at startup</label>
-    </div>   
-    <!--For privacy reasons we don't allow the client media to be accessed, without user interaction                                   -->
-    <!--<div class="form-row">                                                                                                         -->
-    <!--    <label style="width:auto" for="node-input-sendall"> Send msg to all dashboard sessions. </label>                           -->
-    <!--    <input type="checkbox" checked id="node-input-sendall" style="display:inline-block; width:auto; vertical-align:baseline;"> -->
-    <!--</div>                                                                                                                         -->
+    </div>                                                                                                                           -->
     </br>
     <div class="form-row">
         <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
@@ -80,11 +75,23 @@
         paletteLabel: "Camera recorder",
         label: function() { return this.name || "Camera recorder"; },
         oneditprepare: function() {
-                    debugger;
             $('#node-input-allowVideoDisplay').change(function () { 
                 if (this.checked) {
                     $('#node-input-startupVideoDisplay').attr('disabled', false);
                     $('#node-input-size').attr('disabled', false);
+                   
+                    // When re-enabling the size widget, make sure that the height is also reinitialized
+                    if ($('#node-input-height').val() == -1) { // also checks string "-1"
+                        $('#node-input-height').val(0);
+                        $('#node-input-width').val(0);
+                        
+                        // Show the new values in the size widget
+                        $("#node-input-size").elementSizer({
+                            width: "#node-input-width",
+                            height: "#node-input-height",
+                            group: "#node-input-group"
+                        });
+                    }
                 }
                 else {
                     // The autoplay option is only enabled when video is showed
@@ -93,6 +100,10 @@
                     
                     // The size widget is only accessible when video is showed
                     $('#node-input-size').attr('disabled', true);
+                    
+                    // When the video is not displayed in the dashboard, it has no need to take up empty space.
+                    // See https://discourse.nodered.org/t/custom-dashboard-node-without-md-card-possible/14919/20?u=bartbutenaers
+                    $('#node-input-height').val(-1);
                 }
             });
         
@@ -101,15 +112,6 @@
                 height: "#node-input-height",
                 group: "#node-input-group"
             });
-        },
-        oneditsave: function() {
-            if (allowVideoDisplay === false) {
-                // When the video is not displayed in the dashboard, it has no need to take up empty space.
-                // See https://discourse.nodered.org/t/custom-dashboard-node-without-md-card-possible/14919/20?u=bartbutenaers
-                this.height = -1;
-            }
-        },
-        oneditresize: function(size) {
         }
     });
 </script>

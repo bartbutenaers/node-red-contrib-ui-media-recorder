@@ -53,6 +53,7 @@ module.exports = function(RED) {
             }
             RED.nodes.createNode(this, config);
             var done = null;
+            
             if (checkConfig(node, config)) {
                 var html = HTML(config);
                 done = ui.addWidget({
@@ -93,14 +94,10 @@ module.exports = function(RED) {
                         // drawing that to the screen, we can change its size and/or apply
                         // other changes before drawing it.
                         function takeSnapshot() {
-                            if ($scope.recorderStatus === "streaming") {
-                                $scope.rafId = requestAnimationFrame(takepicture);
-                            }
-
+                            var before = Date.now();
+                            
                             $scope.canvasElement.width = $scope.videoElement.videoWidth;
                             $scope.canvasElement.height = $scope.videoElement.videoHeight;
-                            
-                            //console.log("TODO videoWidth = " + $scope.videoElement.videoWidth + " and videoHeight = " + $scope.videoElement.videoHeight);
                             
                             var canvasContext = $scope.canvasElement.getContext('2d');
                     
@@ -112,21 +109,52 @@ module.exports = function(RED) {
                             var dataURL = $scope.canvasElement.toDataURL('image/png');
                             
                             // The data URL starts with "data:image/png;base64," followed by the data.  Let's remove that first part ...
-                            var data = dataURL.replace(/^data:image\/\w+;base64,/, "");
+                            var imageBase64 = dataURL.replace(/^data:image\/\w+;base64,/, "");
                             
+                            var message = {
+                                payload: imageBase64
+                            }
+                            
+                            switch ($scope.recorderStatus) {
+                                case "timer":
+                                    // The timer interval (i.e. the interval between successive images) has been specified in the interval.
+                                    // But the above calculations (in this function) have already used a part of that time interval, so we
+                                    // will calculate the remaining time.  At that time the next snapshot should be scheduled.
+                                    var duration = Date.now() - before;
+                                    var timeout = $scope.timerInterval - duration;
+                                    
+                                    // Pass the duration in the message, so the Node-RED flow could detect whether the specified interval
+                                    // (in the config screen) is too short --> because in that case 
+                                    
+                                    // When the timeout is negative, this means that the above calculation (in this function), has taken longer
+                                    // as expected.  The timer interval that has been specified in the input message was too short, so we can't/refresh-ui-node/13921/40
+                                    // deliver the images at that speed.  So the best we can do is start the next capture immediately (i.e. at 0 seconds):
+                                    timeout = Math.max(0, timeout);
+
+                                    // Schedule the next snapshot in time.  Note that we could have used setInterval (instead of recursive setTimeout calls).  However 
+                                    // when the above processing (in this function) takes longer than the interval, a queue of callbacks will remain. 
+                                    // Thanks to Simon Hailes for the tip!!!
+                                    $scope.timerId = setTimeout(takeSnapshot, timeout);
+                                    
+                                    break;
+                                case "streaming":
+                                    $scope.rafId = requestAnimationFrame(takeSnapshot);
+                                    break;
+                            }
+                                                        
                             // Send the image data (as base64 encoded string) to the Node-RED server side flow
-                            $scope.send({payload: data});
+                            $scope.send(message);
                         }
                         
                         $scope.init = function (config) {          
                             $scope.config = config;
                             $scope.recorderStatus = null;
-                            
-                            // TODO test data verwijderen
+  debugger;                       
+                            // TODO make these adjustable
                             $scope.config.allowVideoDisplay   = config.allowVideoDisplay;
                             $scope.config.startupVideoDisplay = config.startupVideoDisplay;
                             $scope.config.mediaType           = config.mediaType;
-                            $scope.config.isVideoPlaying      = false;
+                            $scope.isVideoPlaying      = false;
                             $scope.config.isVideoDisplayed    = false;
                             $scope.config.width_min           = 640;
                             $scope.config.width_max           = 640;
@@ -158,8 +186,9 @@ module.exports = function(RED) {
                             $scope.canvasElement = document.createElement('canvas');
                         
                             if (!window.MediaSource && !window.WebKitMediaSource) {
+                                $scope.errorText = "Your browser doesn't support the MediaSource API!";
                                 // TODO show this error in the node status (flow editor)
-                                console.log("Your browser doesn't support the MediaSource API!");
+                                console.log($scope.errorText);
                                 return;
                             }
                                         
@@ -175,7 +204,8 @@ module.exports = function(RED) {
                             // Caution: for example since version 74 of Chrome navigator.getUserMedia, navigator.webkitGetUserMedia and navigator.mediaDevices
                             // can be used only in secure context (https).  Otherwise they are undefined!
                             if (!navigator.getUserMedia) {
-                                console.log("Your browser doesn't support getUserMedia!");
+                                $scope.errorText = "Your browser doesn't support getUserMedia!";
+                                console.log($scope.errorText);
                                 return;
                             }
                             
@@ -228,7 +258,7 @@ module.exports = function(RED) {
                                 //$scope.videoElement.muted = true;
                                 $scope.videoElement.volume = 0;  // replace muted
                                                             
-/*                                
+                             
                                 // Show the video at startup if required (i.e. our own autoplay feature ...)
                                 if ($scope.config.allowVideoDisplay === false) {
                                     // TODO check whether this is required (since the md-card element isn't generated anyway ...
@@ -243,7 +273,7 @@ module.exports = function(RED) {
                                         $scope.divElement.removeChild($scope.svgElement); 
                                         // Start playing the video, since it is being displayed
                                         $scope.videoElement.play();
-                                        $scope.config.isVideoPlaying = true;
+                                        $scope.isVideoPlaying = true;
                                         $scope.config.isVideoDisplayed = true;
                                     }
                                     else {
@@ -252,9 +282,11 @@ module.exports = function(RED) {
                                        // $scope.divElement.appendChild($scope.svgElement);                                         
                                     }
                                 }
-*/                                
+                               
                             },
                             function(err) {
+                                $scope.errorText = err;
+                                
                                 // TODO update the node status in the flow editor
                                 console.log(err);
                             });
@@ -271,7 +303,7 @@ module.exports = function(RED) {
                            
                             if ($scope.timerId) {
                                 // When a timer is currently busy, we need to stop it
-                                clearInterval($scope.timerId); 
+                                clearTimeout($scope.timerId); 
                                 $scope.timerId = null;
                             }
                         })                        
@@ -290,6 +322,11 @@ module.exports = function(RED) {
                                 console.log("The msg.payload should contain a string (command)!");
                                 return;
                             }
+                            
+                            if ($scope.errorText) {
+                                console.log("The msg will be ignored, due to error during setup: " + $scope.errorText);
+                                return;
+                            }
 
                             switch(newVal.payload) {
                                 case "take_picture":
@@ -301,7 +338,7 @@ module.exports = function(RED) {
                                     $scope.recorderStatus = "snapshot";
                                
                                     // The video element should be playing, to be able to grab a picture from it...
-                                    if ($scope.config.isVideoPlaying === false) {  
+                                    if ($scope.isVideoPlaying === false) {  
                                         // Make sure the video element is running when the frame is grabbed from it.
                                         // Don't use the 'play' event, but use the 'playing' event instead.  Otherwise the play() function has been called,
                                         // but the images aren't loaded yet into the buffer.  As a result we will get the image of the PREVIOUS takeSnapshot 
@@ -314,21 +351,17 @@ module.exports = function(RED) {
                                                 // At this moment the video hasn't buffered any frames yet.  So let's keep it playing
                                                 // for a short period of time, to make sure we have received at least 1 frame ...
                                                 setTimeout(function() {
-                                                    $scope.videoElement.onpause = function() {
-                                                        takeSnapshot();
-                                                    }
-                                                    
+                                                    takeSnapshot();
                                                     $scope.videoElement.pause();
-                                                    $scope.config.isVideoPlaying = false;
+                                                    $scope.isVideoPlaying = false;
                                                 }, 100);
                                             }  
                                         };
                                         
                                         $scope.videoElement.play();
-                                        $scope.config.isVideoPlaying = true;
+                                        $scope.isVideoPlaying = true;
                                     }
                                     else {
-                                        console.log("oei de video is reeds aan het playen");
                                         // The video element was already playing, so just grab an iframe from it.
                                         // Afterwards we just let the video playing ...
                                         takeSnapshot();
@@ -347,13 +380,13 @@ module.exports = function(RED) {
                                     $scope.recorderStatus = "streaming";
                                     
                                     // The video element should be playing, to be able to grab a picture from it...
-                                    if ($scope.config.isVideoPlaying === false) {
+                                    if ($scope.isVideoPlaying === false) {
                                         $scope.videoElement.play();
-                                        $scope.config.isVideoPlaying = true;
+                                        $scope.isVideoPlaying = true;
                                     }
                                 
                                     // Start taking pictures to stream those towards the server
-                                    $scope.rafId = requestAnimationFrame(takepicture);                                   
+                                    $scope.rafId = requestAnimationFrame(takeSnapshot);                                   
                                    
                                     break;
                                 case "start_timer":
@@ -366,16 +399,16 @@ module.exports = function(RED) {
                                     $scope.recorderStatus = "timer";
                                     
                                     // The video element should be playing, to be able to grab a picture from it...
-                                    if ($scope.config.isVideoPlaying === false) {
+                                    if ($scope.isVideoPlaying === false) {
                                         $scope.videoElement.play();
-                                        $scope.config.isVideoPlaying = true;
+                                        $scope.isVideoPlaying = true;
                                     }
                                     
                                     // Default interval is 1 second, if no interval field has been specified in the input message
-                                    var interval = parseInt(newVal.interval) || 1000;
+                                    $scope.timerInterval = parseInt(newVal.interval) || 1000;
                                 
-                                    // Start a timer to send pictures those the server
-                                    $scope.timerId = setInterval(takepicture, interval);                                   
+                                    // Get the first picture, which will launch a timer to repeat the process periodically...
+                                    takeSnapshot();                                   
 
                                     break;
                                 case "stop":
@@ -402,7 +435,7 @@ module.exports = function(RED) {
                                     // In the other case we will pause the video, to avoid wasting system resources.
                                     if ($scope.config.isVideoDisplayed === false) {
                                         $scope.videoElement.pause();
-                                        $scope.config.isVideoPlaying = false;
+                                        $scope.isVideoPlaying = false;
                                     }  
 
                                     break;
@@ -421,9 +454,9 @@ module.exports = function(RED) {
                                         }
                                             
                                         // As soon as the video is displayed again, it needs to start playing automatically
-                                        if ($scope.config.isVideoPlaying === false) {
+                                        if ($scope.isVideoPlaying === false) {
                                             $scope.videoElement.play();
-                                            $scope.config.isVideoPlaying = true;
+                                            $scope.isVideoPlaying = true;
                                         }
                                     }
                                     
@@ -438,9 +471,9 @@ module.exports = function(RED) {
                                     }
                                     
                                     // When no recording is active, the video can be paused to avoid wasting system resources
-                                    if ($scope.config.isVideoPlaying === true && $scope.recorderStatus === null) {
+                                    if ($scope.isVideoPlaying === true && $scope.recorderStatus === null) {
                                         $scope.videoElement.pause();
-                                        $scope.config.isVideoPlaying = false;
+                                        $scope.isVideoPlaying = false;
                                     }
                                     
                                     break;

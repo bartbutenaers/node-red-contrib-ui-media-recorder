@@ -114,7 +114,7 @@ module.exports = function(RED) {
                             var message = {
                                 payload: imageBase64
                             }
-                            
+               
                             switch ($scope.recorderStatus) {
                                 case "timer":
                                     // The timer interval (i.e. the interval between successive images) has been specified in the interval.
@@ -125,6 +125,8 @@ module.exports = function(RED) {
                                     
                                     // Pass the duration in the message, so the Node-RED flow could detect whether the specified interval
                                     // (in the config screen) is too short --> because in that case 
+                                    message.duration = duration;
+                                    message.timeout = timeout;
                                     
                                     // When the timeout is negative, this means that the above calculation (in this function), has taken longer
                                     // as expected.  The timer interval that has been specified in the input message was too short, so we can't/refresh-ui-node/13921/40
@@ -149,7 +151,7 @@ module.exports = function(RED) {
                         $scope.init = function (config) {          
                             $scope.config = config;
                             $scope.recorderStatus = null;
-  debugger;                       
+                  
                             // TODO make these adjustable
                             $scope.config.allowVideoDisplay   = config.allowVideoDisplay;
                             $scope.config.startupVideoDisplay = config.startupVideoDisplay;
@@ -300,7 +302,7 @@ module.exports = function(RED) {
                                 cancelAnimationFrame($scope.rafId);
                                 $scope.rafId = null;
                             }
-                           
+   
                             if ($scope.timerId) {
                                 // When a timer is currently busy, we need to stop it
                                 clearTimeout($scope.timerId); 
@@ -334,7 +336,7 @@ module.exports = function(RED) {
                                         console.log("No use to take a snapshot while we are already recording");
                                         return;
                                     }
-                                
+                              
                                     $scope.recorderStatus = "snapshot";
                                
                                     // The video element should be playing, to be able to grab a picture from it...
@@ -427,7 +429,7 @@ module.exports = function(RED) {
                                     
                                     if ($scope.timerId) {
                                         // When a timer is currently busy, we need to stop it
-                                        clearInterval($scope.timerId); 
+                                        clearTimeout($scope.timerId); 
                                         $scope.timerId = null;
                                     }
                                   

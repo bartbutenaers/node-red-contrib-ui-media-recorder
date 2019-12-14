@@ -3,6 +3,8 @@ A Node-RED node to record media (audio/video) via the Node-RED dashboard.
 
 Special thanks to Simon Hailes, the audio and video wizard from yellaUmbrella (www.yellaumbrella.tv) for all his great tips and tricks!
 
+This node uses the [Media Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Media_Streams_API), which is supported by '*most*' browsers.  To have as much cross-browser support as possible, this node uses the minimal required functionality from that API ...
+
 ## Install
 Run the following npm command in your Node-RED user directory (typically ~/.node-red):
 ```
